@@ -452,8 +452,8 @@ uintptr_t OffsetsFinder::FindStaticFindObject() {
 
     if (StaticFindObjectAddr == 0) {
         StaticFindObjectAddr = (uintptr_t)Memory::FortKit::FindByString(L"/Temp/%s", { Memory::FortKit::ASM::LEA });
-        return 0;
-        return StaticFindObjectAddr;
+        if (StaticFindObjectAddr == 0)
+            return 0;
     }
 
     for (StaticFindObjectAddr; StaticFindObjectAddr > 0; StaticFindObjectAddr -= 1) {
