@@ -5,7 +5,7 @@ DEBUG = 0
 FINALPACKAGE = 1
 
 ZSIGN_PATCH_IPA = 0
-TWEAK_SCHEME = rootless
+TWEAK_SCHEME = roothide
 
 ifeq ($(ZSIGN_PATCH_IPA), 1)
 THEOS_PACKAGE_DIR = ./packages/jailed
