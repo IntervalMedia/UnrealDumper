@@ -2,7 +2,7 @@ Package: com.kitty.uedumper
 Name: UEDumper
 Version: 4.0.1
 Architecture: iphoneos-arm
-Description: An awesome MobileSubstrate tweak!
+Description: An awesome MobileSubstrate tweak! Compatible with Roothide jailbreak.
 Maintainer: CyberCat
 Author: CyberCat
 Section: Tweaks
