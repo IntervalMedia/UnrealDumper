@@ -32,6 +32,32 @@ xcodegen generate
 open SDKViewerMobile.xcodeproj
 ```
 
+## Theos build (jailbreak / TrollStore)
+
+A dedicated Theos app project is available at:
+
+`/home/runner/work/UnrealDumper/UnrealDumper/iOS/SDKViewerApp/TheosApp`
+
+It provides a separate iOS app build with:
+- minimum target **iOS 15.0**
+- standalone `Makefile`
+- app package metadata (`control`)
+- app resources (including a generic icon)
+
+Build commands:
+
+```bash
+cd /home/runner/work/UnrealDumper/UnrealDumper/iOS/SDKViewerApp/TheosApp
+make package
+```
+
+For TrollStore IPA packaging:
+
+```bash
+cd /home/runner/work/UnrealDumper/UnrealDumper/iOS/SDKViewerApp/TheosApp
+make package PACKAGE_FORMAT=ipa
+```
+
 ## Core module tests
 
 The parsing and pointer-generation core is implemented in the Swift package target `SDKViewerApp`:
