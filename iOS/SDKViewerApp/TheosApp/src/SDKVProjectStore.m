@@ -4,6 +4,40 @@
 
 @implementation SDKVProjectStore
 
+- (nullable NSString *)readTextFileAtURL:(NSURL *)url required:(BOOL)required error:(NSError **)error {
+    NSData *data = [NSData dataWithContentsOfURL:url options:0 error:error];
+    if (!data) {
+        return nil;
+    }
+
+    NSArray<NSNumber *> *encodings = @[
+        @(NSUTF8StringEncoding),
+        @(NSUnicodeStringEncoding),
+        @(NSUTF16LittleEndianStringEncoding),
+        @(NSUTF16BigEndianStringEncoding),
+        @(NSWindowsCP1252StringEncoding),
+        @(NSISOLatin1StringEncoding),
+        @(NSASCIIStringEncoding),
+    ];
+
+    for (NSNumber *encodingNumber in encodings) {
+        NSStringEncoding encoding = (NSStringEncoding)encodingNumber.unsignedIntegerValue;
+        NSString *text = [[NSString alloc] initWithData:data encoding:encoding];
+        if (text) {
+            return text;
+        }
+    }
+
+    if (required && error) {
+        *error = [NSError errorWithDomain:@"SDKViewer"
+                                     code:1003
+                                 userInfo:@{
+                                     NSLocalizedDescriptionKey: [NSString stringWithFormat:@"Failed to decode %@ using supported encodings.", url.lastPathComponent ?: @"text file"]
+                                 }];
+    }
+    return nil;
+}
+
 - (NSURL *)projectsRootURL {
     NSURL *documents = [[[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask] firstObject];
     return [documents URLByAppendingPathComponent:@"SDKViewerProjects" isDirectory:YES];
@@ -136,14 +170,14 @@
     NSString *aioPath = [[extractDir URLByAppendingPathComponent:@"AIOHeader.hpp"] path];
     NSString *scriptPath = [[extractDir URLByAppendingPathComponent:@"script.json"] path];
 
-    NSString *aio = [NSString stringWithContentsOfFile:aioPath encoding:NSUTF8StringEncoding error:error];
+    NSString *aio = [self readTextFileAtURL:[NSURL fileURLWithPath:aioPath] required:YES error:error];
     if (!aio) {
         return nil;
     }
 
     NSString *script = nil;
     if ([fm fileExistsAtPath:scriptPath]) {
-        script = [NSString stringWithContentsOfFile:scriptPath encoding:NSUTF8StringEncoding error:nil];
+        script = [self readTextFileAtURL:[NSURL fileURLWithPath:scriptPath] required:NO error:nil];
     }
 
     NSDictionary *dump = [SDKVParser parseAIOHeader:aio scriptJSON:script error:error];
