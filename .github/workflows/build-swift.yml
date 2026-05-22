@@ -1,0 +1,111 @@
+name: Build SDKViewer Swift Release
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sdkviewer-swift-release-${{ github.event.release.tag_name || github.ref_name || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  build-swift-ios-app:
+    runs-on: macos-15
+    defaults:
+      run:
+        shell: bash
+        working-directory: iOS/SDKViewerApp
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Show toolchain versions
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Resolve Swift package tests
+        run: swift test
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build unsigned iPhoneOS app
+        run: |
+          xcodebuild \
+            -project SDKViewerMobile.xcodeproj \
+            -scheme SDKViewerMobile \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/device \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY='' \
+            clean build
+
+      - name: Build iPhone Simulator app
+        run: |
+          xcodebuild \
+            -project SDKViewerMobile.xcodeproj \
+            -scheme SDKViewerMobile \
+            -configuration Release \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/simulator \
+            clean build
+
+      - name: Package build outputs
+        id: package
+        run: |
+          set -euo pipefail
+
+          ARTIFACT_DIR="$RUNNER_TEMP/sdkviewer-release"
+          mkdir -p "$ARTIFACT_DIR"
+
+          DEVICE_APP_PATH="$(find "$PWD/build/device/Build/Products/Release-iphoneos" -maxdepth 1 -name 'SDKViewerMobile.app' -print -quit)"
+          SIMULATOR_APP_PATH="$(find "$PWD/build/simulator/Build/Products/Release-iphonesimulator" -maxdepth 1 -name 'SDKViewerMobile.app' -print -quit)"
+
+          if [[ -z "$DEVICE_APP_PATH" ]]; then
+            echo "Unsigned iPhoneOS .app was not produced" >&2
+            exit 1
+          fi
+
+          if [[ -z "$SIMULATOR_APP_PATH" ]]; then
+            echo "iPhone Simulator .app was not produced" >&2
+            exit 1
+          fi
+
+          ditto -c -k --sequesterRsrc --keepParent "$DEVICE_APP_PATH" "$ARTIFACT_DIR/SDKViewerMobile-iphoneos-unsigned.app.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$SIMULATOR_APP_PATH" "$ARTIFACT_DIR/SDKViewerMobile-iphonesimulator.app.zip"
+          ditto -c -k --sequesterRsrc "$PWD/build/device/Build/Products/Release-iphoneos" "$ARTIFACT_DIR/SDKViewerMobile-iphoneos-build-products.zip"
+
+          echo "artifact_dir=$ARTIFACT_DIR" >> "$GITHUB_OUTPUT"
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdkviewer-swift-release
+          path: ${{ steps.package.outputs.artifact_dir }}/*
+          if-no-files-found: error
+
+      - name: Upload assets to GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ steps.package.outputs.artifact_dir }}/SDKViewerMobile-iphoneos-unsigned.app.zip
+            ${{ steps.package.outputs.artifact_dir }}/SDKViewerMobile-iphonesimulator.app.zip
+            ${{ steps.package.outputs.artifact_dir }}/SDKViewerMobile-iphoneos-build-products.zip
