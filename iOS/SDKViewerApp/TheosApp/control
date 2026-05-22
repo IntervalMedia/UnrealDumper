@@ -1,0 +1,9 @@
+Package: com.intervalmedia.sdkviewer
+Name: SDKViewerMobile
+Version: 1.0.0
+Architecture: iphoneos-arm
+Description: Unreal SDK mobile viewer with ZIP import and pointer calculator.
+Maintainer: IntervalMedia
+Author: IntervalMedia
+Section: Applications
+Depends: firmware (>= 15.0)
