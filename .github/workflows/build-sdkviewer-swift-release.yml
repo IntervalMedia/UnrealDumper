@@ -16,10 +16,8 @@ concurrency:
 jobs:
   build-swift-ios-app:
     runs-on: macos-15
-    defaults:
-      run:
-        shell: bash
-        working-directory: iOS/SDKViewerApp
+    env:
+      APP_WORKDIR: ${{ github.workspace }}/iOS/SDKViewerApp
 
     steps:
       - name: Check out repository
@@ -30,22 +28,36 @@ jobs:
         with:
           xcode-version: latest-stable
 
+      - name: Verify app workspace
+        run: |
+          set -euo pipefail
+          test -d "$APP_WORKDIR"
+          ls "$APP_WORKDIR"
+
       - name: Show toolchain versions
         run: |
+          cd "$APP_WORKDIR"
           xcodebuild -version
           swift --version
 
       - name: Install XcodeGen
-        run: brew install xcodegen
+        run: |
+          cd "$APP_WORKDIR"
+          brew install xcodegen
 
       - name: Resolve Swift package tests
-        run: swift test
+        run: |
+          cd "$APP_WORKDIR"
+          swift test
 
       - name: Generate Xcode project
-        run: xcodegen generate
+        run: |
+          cd "$APP_WORKDIR"
+          xcodegen generate
 
       - name: Build unsigned iPhoneOS app
         run: |
+          cd "$APP_WORKDIR"
           xcodebuild \
             -project SDKViewerMobile.xcodeproj \
             -scheme SDKViewerMobile \
@@ -59,6 +71,7 @@ jobs:
 
       - name: Build iPhone Simulator app
         run: |
+          cd "$APP_WORKDIR"
           xcodebuild \
             -project SDKViewerMobile.xcodeproj \
             -scheme SDKViewerMobile \
@@ -71,12 +84,13 @@ jobs:
         id: package
         run: |
           set -euo pipefail
+          cd "$APP_WORKDIR"
 
           ARTIFACT_DIR="$RUNNER_TEMP/sdkviewer-release"
           mkdir -p "$ARTIFACT_DIR"
 
-          DEVICE_APP_PATH="$(find "$PWD/build/device/Build/Products/Release-iphoneos" -maxdepth 1 -name 'SDKViewerMobile.app' -print -quit)"
-          SIMULATOR_APP_PATH="$(find "$PWD/build/simulator/Build/Products/Release-iphonesimulator" -maxdepth 1 -name 'SDKViewerMobile.app' -print -quit)"
+          DEVICE_APP_PATH="$(find "$APP_WORKDIR/build/device/Build/Products/Release-iphoneos" -maxdepth 1 -name 'SDKViewerMobile.app' -print -quit)"
+          SIMULATOR_APP_PATH="$(find "$APP_WORKDIR/build/simulator/Build/Products/Release-iphonesimulator" -maxdepth 1 -name 'SDKViewerMobile.app' -print -quit)"
 
           if [[ -z "$DEVICE_APP_PATH" ]]; then
             echo "Unsigned iPhoneOS .app was not produced" >&2
@@ -90,7 +104,7 @@ jobs:
 
           ditto -c -k --sequesterRsrc --keepParent "$DEVICE_APP_PATH" "$ARTIFACT_DIR/SDKViewerMobile-iphoneos-unsigned.app.zip"
           ditto -c -k --sequesterRsrc --keepParent "$SIMULATOR_APP_PATH" "$ARTIFACT_DIR/SDKViewerMobile-iphonesimulator.app.zip"
-          ditto -c -k --sequesterRsrc "$PWD/build/device/Build/Products/Release-iphoneos" "$ARTIFACT_DIR/SDKViewerMobile-iphoneos-build-products.zip"
+          ditto -c -k --sequesterRsrc "$APP_WORKDIR/build/device/Build/Products/Release-iphoneos" "$ARTIFACT_DIR/SDKViewerMobile-iphoneos-build-products.zip"
 
           echo "artifact_dir=$ARTIFACT_DIR" >> "$GITHUB_OUTPUT"
 
