@@ -19,7 +19,7 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: iOS/SDKViewerApp
+        working-directory: iOS/SDKViewerApp/App/Sources/SDKViewerMobileApp
 
     steps:
       - name: Check out repository
